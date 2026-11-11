@@ -1,0 +1,43 @@
+# Local stack: PostgreSQL + API (dev profile with demo data).
+#   docker compose up --build
+# For MySQL instead, start the "mysql" service and run the app with SPRING_PROFILES_ACTIVE=dev,mysql
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: obrs
+      POSTGRES_USER: obrs
+      POSTGRES_PASSWORD: obrs_dev_password
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U obrs"]
+      interval: 5s
+      retries: 10
+
+  mysql:
+    image: mysql:8.4
+    profiles: ["mysql"]
+    environment:
+      MYSQL_DATABASE: obrs
+      MYSQL_USER: obrs
+      MYSQL_PASSWORD: obrs_dev_password
+      MYSQL_ROOT_PASSWORD: root_dev_password
+    ports: ["3306:3306"]
+    volumes: [mysqldata:/var/lib/mysql]
+
+  api:
+    build: .
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      DB_URL: jdbc:postgresql://postgres:5432/obrs
+      DB_USERNAME: obrs
+      DB_PASSWORD: obrs_dev_password
+      CORS_ALLOWED_ORIGINS: http://localhost:5173
+    ports: ["8080:8080"]
+
+volumes:
+  pgdata:
+  mysqldata:

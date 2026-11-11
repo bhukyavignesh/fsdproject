@@ -1,0 +1,58 @@
+### OBRS API walkthrough (IntelliJ HTTP client / VS Code REST Client)
+@base = http://localhost:8080
+
+### 1. Login as the seeded demo passenger (dev profile)
+# @name login
+POST {{base}}/api/auth/login
+Content-Type: application/json
+
+{"identifier": "demo@obrs.local", "password": "Demo@1234"}
+
+> {% client.global.set("token", response.body.accessToken); client.global.set("refresh", response.body.refreshToken); %}
+
+### 2. Search buses (public). Use a date within the next 7 days.
+GET {{base}}/api/buses/search?source=Bengaluru&destination=Chennai&date=2026-11-12
+
+### 3. Seat map for a schedule (replace 1 with a scheduleId from search)
+GET {{base}}/api/buses/schedules/1/seats
+
+### 4. Lock seats (10-minute hold)
+# @name lock
+POST {{base}}/api/bookings/lock
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{"scheduleId": 1, "seatNumbers": ["L1", "L2"]}
+
+> {% client.global.set("bookingId", response.body.bookingId); %}
+
+### 5. Confirm with passengers + payment token -> PNR
+POST {{base}}/api/bookings/{{bookingId}}/confirm
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "passengers": [
+    {"seatNumber": "L1", "name": "Gopal Mondal", "age": 27, "gender": "MALE"},
+    {"seatNumber": "L2", "name": "Ria Sen", "age": 25, "gender": "FEMALE"}
+  ],
+  "contactEmail": "gopal@example.com",
+  "contactPhone": "9876543210",
+  "paymentToken": "tok_demo_success"
+}
+
+### 6. My bookings
+GET {{base}}/api/bookings/my
+Authorization: Bearer {{token}}
+
+### 7. Refresh tokens (rotation)
+POST {{base}}/api/auth/refresh
+Content-Type: application/json
+
+{"refreshToken": "{{refresh}}"}
+
+### 8. Operator: login then list buses
+POST {{base}}/api/auth/login
+Content-Type: application/json
+
+{"identifier": "operator@obrs.local", "password": "Operator@123"}
